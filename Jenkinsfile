@@ -74,8 +74,22 @@ pipeline {
 	   }
 	}
 	
-    }	
+    
 
+        stage('Validate Backend') {
+            steps {
+                dir('workspace/trackflow/backend') {
+                    sh '''
+                        echo "Checking backend JavaScript syntax"
+                        find src -name "*.js" -type f -exec node --check {} \\;
+                        echo "Backend syntax validation successful"
+                    '''
+                }
+            }
+        }
+
+
+    }
 
     post {
         success {
