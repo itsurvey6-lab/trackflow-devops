@@ -48,7 +48,34 @@ pipeline {
                 }
             }
         }
-    }
+
+	stage('Install Frontend Dependencies') {
+	    steps {
+		dir('workspace/trackflow/frontend') {
+			sh 'npm ci'
+		}
+	    }
+	}
+
+	stage('Install Backend Dependies') {
+	   steps {
+		dir('workspace/trackflow/backend') {
+			sh 'npm ci'
+		}
+	   }
+	}
+	
+	stage('Build frontend') {
+	   steps {
+		
+		dir('workspace/trackflow/frontend') {
+                    sh 'npm run build'
+		}
+	   }
+	}
+	
+    }	
+
 
     post {
         success {
