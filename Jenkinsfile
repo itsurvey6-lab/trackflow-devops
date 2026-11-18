@@ -5,14 +5,15 @@ pipeline {
     options {
         timestamps()
         disableConcurrentBuilds()
-        buildDiscarder(logRotator(
-            numToKeepStr: '10'
-        ))
+        buildDiscarder(logRotator(numToKeepStr: '10'))
     }
 
     environment {
         APP_REPO = 'https://github.com/itsurvey6-lab/trackflow.git'
         APP_BRANCH = 'main'
+        FRONTEND_IMAGE = 'trackflow-frontend'
+        BACKEND_IMAGE = 'trackflow-backend'
+        FRONTEND_API_URL = 'http://192.168.1.20:5000'
     }
 
     stages {
@@ -36,64 +37,94 @@ pipeline {
                         ls -la
 
                         echo "===== FRONTEND ====="
-                        ls frontend/package.json
+                        test -f frontend/package.json
 
                         echo "===== BACKEND ====="
-                        ls backend/package.json
+                        test -f backend/package.json
 
-                        echo "===== DOCKERFILES ====="
-                        find . -maxdepth 3 -name Dockerfile \
-                            -not -path '*/node_modules/*'
+                        echo "===== LOCK FILES ====="
+                        test -f frontend/package-lock.json
+                        test -f backend/package-lock.json
+
+                        echo "Application inspection successful"
                     '''
                 }
             }
         }
-
-	stage('Install Frontend Dependencies') {
-	    steps {
-		dir('workspace/trackflow/frontend') {
-			sh 'npm ci'
-		}
-	    }
-	}
-
-	stage('Install Backend Dependies') {
-	   steps {
-		dir('workspace/trackflow/backend') {
-			sh 'npm ci'
-		}
-	   }
-	}
-	
-	stage('Build frontend') {
-	   steps {
-		
-		dir('workspace/trackflow/frontend') {
-                    sh 'npm run build'
-		}
-	   }
-	}
-	
-    
 
         stage('Validate Backend') {
             steps {
                 dir('workspace/trackflow/backend') {
                     sh '''
                         echo "Checking backend JavaScript syntax"
-                        find src -name "*.js" -type f -exec node --check {} \\;
+
+                        find src -name "*.js" -type f \
+                            -exec node --check {} \\;
+
                         echo "Backend syntax validation successful"
                     '''
                 }
             }
         }
 
+        stage('Build Frontend Docker Image') {
+            steps {
+                sh '''
+                    set -e
 
+                    echo "Preparing frontend Docker build context"
+
+                    cp deployment/docker/frontend/nginx.conf \
+                        workspace/trackflow/frontend/nginx.conf
+
+                    echo "Building frontend image"
+
+                    docker build \
+                        --build-arg VITE_API_URL="$FRONTEND_API_URL" \
+                        -t "$FRONTEND_IMAGE:$BUILD_NUMBER" \
+                        -t "$FRONTEND_IMAGE:latest" \
+                        -f deployment/docker/frontend/Dockerfile \
+                        workspace/trackflow/frontend
+                '''
+            }
+        }
+
+        stage('Build Backend Docker Image') {
+            steps {
+                sh '''
+                    set -e
+
+                    echo "Building backend image"
+
+                    docker build \
+                        -t "$BACKEND_IMAGE:$BUILD_NUMBER" \
+                        -t "$BACKEND_IMAGE:latest" \
+                        -f deployment/docker/backend/Dockerfile \
+                        workspace/trackflow/backend
+                '''
+            }
+        }
+
+        stage('Verify Docker Images') {
+            steps {
+                sh '''
+                    echo "===== BUILT DOCKER IMAGES ====="
+
+                    docker image inspect \
+                        "$FRONTEND_IMAGE:$BUILD_NUMBER"
+
+                    docker image inspect \
+                        "$BACKEND_IMAGE:$BUILD_NUMBER"
+
+                    docker images | grep trackflow
+                '''
+            }
+        }
     }
 
     post {
         success {
-            echo 'TrackFlow source checkout and inspection successful.'
+            echo 'TrackFlow Docker images built and verified successfully.'
         }
 
         failure {
