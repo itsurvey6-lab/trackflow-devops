@@ -120,6 +120,28 @@ pipeline {
                 '''
             }
         }
+
+	stage('Deploy TrackFlow') {
+            steps {
+                sh '''
+                    set -e
+
+                    echo "Deploying TrackFlow build $BUILD_NUMBER"
+
+                    IMAGE_TAG="$BUILD_NUMBER" docker compose \
+                        -p trackflow \
+                        --project-directory /home/ubuntu/trackflow \
+                        -f deployment/docker-compose.yml \
+                        up -d \
+                        --no-build \
+                        --pull never \
+                        --wait
+
+                    echo "Deployment completed successfully"
+                '''
+            }
+        }
+
     }
 
     post {
