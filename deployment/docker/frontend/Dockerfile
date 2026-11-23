@@ -1,6 +1,8 @@
 # Stage 1: Build React application
 FROM node:22-alpine AS builder
 
+RUN apk update && apk upgrade --no-cache
+
 WORKDIR /app
 
 COPY package*.json ./
@@ -17,6 +19,8 @@ RUN npm run build
 
 # Stage 2: Serve application using Nginx
 FROM nginx:alpine
+
+RUN apk update && apk upgrade --no-cache
 
 COPY --from=builder /app/dist /usr/share/nginx/html
 
