@@ -101,7 +101,8 @@ pipeline {
                     echo "Building backend image"
 
                     docker build \
-                        -t "$BACKEND_IMAGE:$BUILD_NUMBER" \
+			--pull \
+			-t "$BACKEND_IMAGE:$BUILD_NUMBER" \
                         -t "$BACKEND_IMAGE:latest" \
                         -f deployment/docker/backend/Dockerfile \
                         workspace/trackflow/backend
