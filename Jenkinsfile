@@ -10,7 +10,7 @@ pipeline {
 
     triggers {
         pollSCM('H/2 * * * *')
-    }	
+    }
 
     environment {
         APP_REPO = 'https://github.com/itsurvey6-lab/trackflow.git'
@@ -125,6 +125,24 @@ pipeline {
             }
         }
 
+
+        stage('Trivy Security Scan') {
+            steps {
+                sh '''
+                    set -e
+
+                    echo "Scanning Backend Image..."
+                    trivy image --exit-code 1 --severity HIGH,CRITICAL \
+                        ${BACKEND_IMAGE}:${BUILD_NUMBER}
+
+                    echo "Scanning Frontend Image..."
+                    trivy image --exit-code 1 --severity HIGH,CRITICAL \
+                        ${FRONTEND_IMAGE}:${BUILD_NUMBER}
+                '''
+            }
+        }
+
+
 	stage('Deploy TrackFlow') {
             steps {
                 sh '''
@@ -146,7 +164,13 @@ pipeline {
             }
         }
 
+
+
     }
+
+
+
+
 
     post {
         success {
