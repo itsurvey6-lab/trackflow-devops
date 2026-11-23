@@ -8,6 +8,10 @@ pipeline {
         buildDiscarder(logRotator(numToKeepStr: '10'))
     }
 
+    triggers {
+        pollSCM('H/2 * * * *')
+    }	
+
     environment {
         APP_REPO = 'https://github.com/itsurvey6-lab/trackflow.git'
         APP_BRANCH = 'main'
