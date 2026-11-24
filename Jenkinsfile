@@ -71,6 +71,43 @@ pipeline {
             }
         }
 
+
+
+
+
+        stage('SonarQube Code Analysis') {
+            steps {
+                dir('workspace/trackflow') {
+                    withSonarQubeEnv('SonarQube') {
+                        sh '''
+                            set -e
+
+                            echo "Starting TrackFlow SonarQube analysis"
+
+                            sonar-scanner \
+                                -Dsonar.projectKey=TrackFlow \
+                                -Dsonar.projectName=TrackFlow \
+                                -Dsonar.sources=frontend/src,backend/src \
+                                -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/build/**,backend/uploads/**
+
+                            echo "SonarQube analysis submitted"
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+
+
+
         stage('Build Frontend Docker Image') {
             steps {
                 sh '''
