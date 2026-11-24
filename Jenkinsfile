@@ -204,6 +204,30 @@ pipeline {
 
 
 
+
+        stage('Post-Deployment Smoke Test') {
+            steps {
+                sh '''
+                    set -e
+
+                    echo "Checking TrackFlow backend health"
+
+                    curl -fsS --retry 5 --retry-delay 3 --retry-connrefused \
+                        http://192.168.1.20:5000/api/health \
+                        | grep -q '"status":"success"'
+
+                    echo "Backend and PostgreSQL health check passed"
+
+                    echo "Checking TrackFlow frontend"
+
+                    curl -fsSI --retry 5 --retry-delay 3 --retry-connrefused \
+                        http://192.168.1.20:8081 > /dev/null
+
+                    echo "Frontend health check passed"
+                '''
+            }
+        }
+
     }
 
 
