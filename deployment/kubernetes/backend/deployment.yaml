@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trackflow-backend
+  namespace: trackflow-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: trackflow-backend
+  template:
+    metadata:
+      labels:
+        app: trackflow-backend
+    spec:
+      containers:
+        - name: backend
+          image: itsurvey6/trackflow-backend:17
+          ports:
+            - containerPort: 5000
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: PORT
+              value: "5000"
+            - name: DB_HOST
+              value: trackflow-postgres
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: trackflow-db-secret
+                  key: POSTGRES_DB
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: trackflow-db-secret
+                  key: POSTGRES_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: trackflow-db-secret
+                  key: POSTGRES_PASSWORD
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: trackflow-db-secret
+                  key: JWT_SECRET
+            - name: FRONTEND_URL
+              value: http://trackflow.local
+          volumeMounts:
+            - name: uploads
+              mountPath: /app/uploads
+      volumes:
+        - name: uploads
+          emptyDir: {}
+

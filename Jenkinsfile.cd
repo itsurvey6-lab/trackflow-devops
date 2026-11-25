@@ -1,0 +1,112 @@
+
+pipeline {
+    agent any
+
+    parameters {
+        string(
+            name: 'IMAGE_TAG',
+            defaultValue: '',
+            description: 'Docker image build number received from CI'
+        )
+    }
+
+    stages {
+        stage('Validate Image Tag') {
+            steps {
+                script {
+                    if (!(params.IMAGE_TAG ==~ /^[0-9]+$/)) {
+                        error("Invalid IMAGE_TAG: ${params.IMAGE_TAG}")
+                    }
+                }
+                echo "Deploying TrackFlow image version ${params.IMAGE_TAG}"
+            }
+        }
+
+        stage('Checkout DevOps Repository') {
+            steps {
+                git branch: 'main',
+                    credentialsId: 'github-credentials',
+                    url: 'https://github.com/itsurvey6-lab/trackflow-devops.git'
+            }
+        }
+
+        stage('Update Kubernetes Image Tags') {
+            steps {
+                sh '''
+                    set -e
+
+                    sed -i -E \
+                      "s#(image: itsurvey6/trackflow-backend:).*#\\1${IMAGE_TAG}#" \
+                      deployment/kubernetes/backend/deployment.yaml
+
+                    sed -i -E \
+                      "s#(image: itsurvey6/trackflow-frontend:).*#\\1${IMAGE_TAG}#" \
+                      deployment/kubernetes/frontend/deployment.yaml
+
+                    echo "Updated Kubernetes image versions:"
+                    grep "image:" deployment/kubernetes/backend/deployment.yaml
+                    grep "image:" deployment/kubernetes/frontend/deployment.yaml
+
+                    git diff --check
+                    git diff
+                '''
+            }
+        }
+
+        stage('Commit and Push GitOps Changes') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'github-credentials',
+                    usernameVariable: 'GIT_USERNAME',
+                    passwordVariable: 'GIT_TOKEN'
+                )]) {
+                    sh '''
+                        set -eu
+                        set +x
+
+                        git config user.name "Jenkins"
+                        git config user.email "jenkins@localhost"
+
+                        if git diff --quiet; then
+                            echo "No manifest changes to commit."
+                            exit 0
+                        fi
+
+                        git add deployment/kubernetes/backend/deployment.yaml \
+                                deployment/kubernetes/frontend/deployment.yaml
+
+                        git commit -m "Deploy TrackFlow version ${IMAGE_TAG}"
+
+                        cat > "$WORKSPACE/git-askpass.sh" <<'EOF'
+#!/bin/sh
+case "$1" in
+    *Username*) printf '%s\\n' "$GIT_USERNAME" ;;
+    *Password*) printf '%s\\n' "$GIT_TOKEN" ;;
+esac
+EOF
+
+                        chmod 700 "$WORKSPACE/git-askpass.sh"
+                        trap 'rm -f "$WORKSPACE/git-askpass.sh"' EXIT
+
+                        export GIT_ASKPASS="$WORKSPACE/git-askpass.sh"
+                        export GIT_TERMINAL_PROMPT=0
+
+                        git push origin HEAD:main
+
+                        echo "GitOps manifests pushed successfully."
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'TrackFlow deployment manifests updated successfully.'
+        }
+        failure {
+            echo 'CD pipeline failed. Check the Jenkins console output.'
+        }
+    }
+}
+

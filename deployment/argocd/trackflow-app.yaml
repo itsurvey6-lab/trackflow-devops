@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: trackflow-app
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/itsurvey6-lab/trackflow-devops.git
+    targetRevision: main
+    path: deployment/kubernetes
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: trackflow-app
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+

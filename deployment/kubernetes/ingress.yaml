@@ -1,0 +1,18 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: trackflow-ingress
+  namespace: trackflow-app
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: trackflow.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: trackflow-frontend
+                port:
+                  number: 80

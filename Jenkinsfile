@@ -228,16 +228,25 @@ pipeline {
 
 
     post {
-        success {
-            echo 'TrackFlow Docker images built and verified successfully.'
-        }
+    success {
+        echo 'TrackFlow Docker images built and verified successfully.'
 
-        failure {		
-            echo 'TrackFlow pipeline failed. Check Jenkins console output.'
-        }
-
-        always {
-            echo 'Pipeline execution completed.'
-        }
+        build job: 'TrackFlow-CD',
+            parameters: [
+                string(name: 'IMAGE_TAG', value: env.BUILD_NUMBER)
+            ],
+            wait: false
     }
+
+    failure {
+        echo 'TrackFlow pipeline failed. Check Jenkins console output.'
+    }
+
+    always {
+        echo 'Pipeline execution completed.'
+    }
+}
+
+
+
 }
