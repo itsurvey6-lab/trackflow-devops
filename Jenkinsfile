@@ -17,7 +17,7 @@ pipeline {
         APP_BRANCH = 'main'
         FRONTEND_IMAGE = 'trackflow-frontend'
         BACKEND_IMAGE = 'trackflow-backend'
-        FRONTEND_API_URL = 'http://192.168.1.20:5000'
+        FRONTEND_API_URL = 'http://trackflow.local'
     }
 
     stages {
