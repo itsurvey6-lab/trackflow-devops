@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: itsurvey6/trackflow-backend:43
+          image: itsurvey6/trackflow-backend:44
           ports:
             - containerPort: 5000
           env:
