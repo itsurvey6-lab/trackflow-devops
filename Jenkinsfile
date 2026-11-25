@@ -181,52 +181,45 @@ pipeline {
         }
 
 
-	stage('Deploy TrackFlow') {
-            steps {
-                sh '''
-                    set -e
+	stage('Push Images to Docker Hub') {
+	    steps {
+	        withCredentials([usernamePassword(
+	            credentialsId: 'dockerhub-credentials',
+	            usernameVariable: 'DOCKERHUB_USER',
+	            passwordVariable: 'DOCKERHUB_TOKEN'
+	        )]) {
+	            sh '''
+	                set -e
 
-                    echo "Deploying TrackFlow build $BUILD_NUMBER"
+	                echo "Logging in to Docker Hub"
 
-                    IMAGE_TAG="$BUILD_NUMBER" docker compose \
-                        -p trackflow \
-                        --project-directory /home/ubuntu/trackflow \
-                        -f deployment/docker-compose.yml \
-                        up -d \
-                        --no-build \
-                        --pull never \
-                        --wait
+	                echo "$DOCKERHUB_TOKEN" | docker login \
+	                    -u "$DOCKERHUB_USER" \
+	                    --password-stdin
 
-                    echo "Deployment completed successfully"
-                '''
-            }
-        }
+	                echo "Tagging TrackFlow images"
 
+	                docker tag "$FRONTEND_IMAGE:$BUILD_NUMBER" \
+	                    "$DOCKERHUB_USER/trackflow-frontend:$BUILD_NUMBER"
 
+	                docker tag "$BACKEND_IMAGE:$BUILD_NUMBER" \
+	                    "$DOCKERHUB_USER/trackflow-backend:$BUILD_NUMBER"
 
+	                echo "Pushing frontend image"
 
-        stage('Post-Deployment Smoke Test') {
-            steps {
-                sh '''
-                    set -e
+	                docker push "$DOCKERHUB_USER/trackflow-frontend:$BUILD_NUMBER"
 
-                    echo "Checking TrackFlow backend health"
+	                echo "Pushing backend image"
 
-                    curl -fsS --retry 5 --retry-delay 3 --retry-connrefused \
-                        http://192.168.1.20:5000/api/health \
-                        | grep -q '"status":"success"'
+	                docker push "$DOCKERHUB_USER/trackflow-backend:$BUILD_NUMBER"
 
-                    echo "Backend and PostgreSQL health check passed"
+	                docker logout
 
-                    echo "Checking TrackFlow frontend"
-
-                    curl -fsSI --retry 5 --retry-delay 3 --retry-connrefused \
-                        http://192.168.1.20:8081 > /dev/null
-
-                    echo "Frontend health check passed"
-                '''
-            }
-        }
+	                echo "Both TrackFlow images published successfully"
+	            '''
+	        }
+	    }
+	}
 
     }
 
@@ -239,7 +232,7 @@ pipeline {
             echo 'TrackFlow Docker images built and verified successfully.'
         }
 
-        failure {
+        failure {		
             echo 'TrackFlow pipeline failed. Check Jenkins console output.'
         }
 
