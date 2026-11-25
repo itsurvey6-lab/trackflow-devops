@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: itsurvey6/trackflow-frontend:27
+          image: itsurvey6/trackflow-frontend:28
           ports:
             - containerPort: 80
           readinessProbe:
