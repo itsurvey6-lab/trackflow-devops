@@ -8,9 +8,6 @@ pipeline {
         buildDiscarder(logRotator(numToKeepStr: '10'))
     }
 
-    triggers {
-        
-    }
 
     environment {
         APP_REPO = 'https://github.com/itsurvey6-lab/trackflow.git'
